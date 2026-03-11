@@ -1,0 +1,17 @@
+fix(runtime): remove extra newline when prompt receives EOF
+
+Previously, prompt() used op_read_line_prompt() which relied on
+rustyline. When stdin was closed (Ctrl+D), rustyline would output
+an extra newline before returning, causing inconsistent behavior
+compared to confirm().
+
+This change makes prompt() use the same approach as confirm():
+- Print the prompt manually using core.print()
+- Use readLineFromStdinSync() to read input
+- Return null when stdin is closed (EOF)
+- Return default value when user presses Enter with empty input
+
+This fixes the issue where prompt() would output an extra newline
+when stdin is closed, making its behavior consistent with confirm().
+
+Fixes #22956
