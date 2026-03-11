@@ -387,6 +387,11 @@ impl PackageJson {
       if let Value::Object(map) = value {
         let mut result = IndexMap::with_capacity(map.len());
         for (k, v) in map {
+          // Skip empty keys - they are invalid package names and cause
+          // lockfile corruption (see issue #32113)
+          if k.is_empty() {
+            continue;
+          }
           if let Some(v) = map_string(v) {
             result.insert(k, v);
           }
@@ -1014,5 +1019,29 @@ mod test {
       ),
       Err(PackageJsonLoadError::InvalidExports)
     ));
+  }
+
+  // https://github.com/denoland/deno/issues/32113
+  #[test]
+  fn test_empty_dependency_key_should_be_skipped() {
+    // Empty keys in dependencies should be skipped to avoid lockfile corruption
+    let json_value = serde_json::json!({
+      "name": "test",
+      "version": "1",
+      "dependencies": {
+        "": ".",
+        "valid-dep": "1.0.0"
+      }
+    });
+    let package_json = PackageJson::load_from_value(
+      PathBuf::from("/package.json"),
+      json_value,
+    )
+    .unwrap();
+    let deps = package_json.resolve_local_package_json_deps();
+    // Only valid-dep should be present, empty key should be skipped
+    assert_eq!(deps.dependencies.len(), 1);
+    assert!(deps.dependencies.contains_key("valid-dep"));
+    assert!(!deps.dependencies.contains_key(""));
   }
 }
