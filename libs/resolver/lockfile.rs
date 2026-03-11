@@ -297,7 +297,12 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
             None
           }
           PackageJsonDepValue::Req(req) => {
-            Some(JsrDepPackageReq::npm(req.clone()))
+            // Skip empty package names - they result in invalid lockfile entries
+            if req.name.is_empty() {
+              None
+            } else {
+              Some(JsrDepPackageReq::npm(req.clone()))
+            }
           }
           PackageJsonDepValue::Workspace(_) => None,
         })
