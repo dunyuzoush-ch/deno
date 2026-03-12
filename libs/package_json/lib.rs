@@ -387,6 +387,10 @@ impl PackageJson {
       if let Value::Object(map) = value {
         let mut result = IndexMap::with_capacity(map.len());
         for (k, v) in map {
+          // Skip empty keys (e.g., "" in package.json dependencies)
+          if k.is_empty() {
+            continue;
+          }
           if let Some(v) = map_string(v) {
             result.insert(k, v);
           }
