@@ -1139,18 +1139,28 @@ async fn run_tests_for_worker_inner(
       TestResult::Ignored
     };
 
-    if matches!(result, TestResult::Failed(_)) {
+    let test_failed = matches!(result, TestResult::Failed(_));
+
+    if test_failed {
       fail_fast_tracker.add_failure();
       event_tracker.result(desc, result.clone(), earlier.elapsed())?;
     }
 
     // Execute afterEach hooks (LIFO order)
+    // Note: If the test already failed, we should NOT report the afterEach error
+    // as the main test failure because it would mask the original test failure.
+    // We still execute the hooks, but skip reporting the error to avoid masking.
+    let report_after_each_error = !test_failed;
     call_hooks(worker, test_hooks.after_each.iter().rev(), |core_error| {
       match core_error {
         CoreErrorKind::Js(err) => {
-          let test_result = TestResult::Failed(TestFailure::JsError(err));
-          fail_fast_tracker.add_failure();
-          event_tracker.result(desc, test_result, earlier.elapsed())?;
+          if report_after_each_error {
+            // Only report afterEach error if the original test didn't fail
+            let test_result = TestResult::Failed(TestFailure::JsError(err));
+            fail_fast_tracker.add_failure();
+            event_tracker.result(desc, test_result, earlier.elapsed())?;
+          }
+          // Always return Ok to not fail the test again if it already failed
           Ok(())
         }
         err => Err(err.into_box().into()),
@@ -1158,7 +1168,7 @@ async fn run_tests_for_worker_inner(
     })
     .await?;
 
-    if matches!(result, TestResult::Failed(_)) {
+    if test_failed {
       continue;
     }
 
