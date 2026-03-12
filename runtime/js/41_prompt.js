@@ -39,7 +39,13 @@ function prompt(message = "Prompt", defaultValue) {
   }
 
   const formattedMessage = message.length === 0 ? "" : `${message} `;
-  return op_read_line_prompt(formattedMessage, `${defaultValue}`);
+  const result = op_read_line_prompt(formattedMessage, `${defaultValue}`);
+  // If stdin was closed (e.g., Ctrl+D), result will be an empty string.
+  // Return null to match confirm()'s behavior when stdin is closed.
+  if (result === "") {
+    return null;
+  }
+  return result;
 }
 
 function readLineFromStdinSync() {

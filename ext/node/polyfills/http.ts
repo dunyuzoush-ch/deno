@@ -185,6 +185,10 @@ class FakeSocket extends EventEmitter {
     }, { once: true });
   }
 
+  get signal(): AbortSignal | undefined {
+    return this.#request?.signal;
+  }
+
   setKeepAlive() {}
 
   end() {}
@@ -1702,14 +1706,16 @@ export const ServerResponse = function (
   this._readable = readable;
   this._resolve = resolve;
   this.socket = socket;
+  // Bind abort signal and set up close handler
+  this.socket?.[kBindToAbortSignal]();
+  this.socket?.on("close", () => {
+    if (!this.finished) {
+      this.emit("close");
+    }
+  });
   this.on("newListener", (event) => {
     if (event === "close") {
-      this.socket?.[kBindToAbortSignal]();
-      this.socket?.on("close", () => {
-        if (!this.finished) {
-          this.emit("close");
-        }
-      });
+      // Already set up above, but keep for backwards compatibility
     }
   });
   this._header = "";
@@ -2064,6 +2070,7 @@ export class IncomingMessageForServer extends NodeReadable {
   url: string;
   method: string;
   socket: Socket | FakeSocket;
+  signal: AbortSignal | undefined;
 
   constructor(socket: FakeSocket | Socket) {
     const reader = socket instanceof FakeSocket
@@ -2096,6 +2103,7 @@ export class IncomingMessageForServer extends NodeReadable {
     this.url = "";
     this.method = "";
     this.socket = socket;
+    this.signal = socket instanceof FakeSocket ? socket.signal : undefined;
     this.upgrade = null;
     this[kRawHeaders] = [];
     socket?.on("error", (e) => {
