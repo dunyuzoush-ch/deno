@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core, primordials } from "ext:core/mod.js";
-import { op_read_line_prompt } from "ext:core/ops";
 const { ArrayPrototypePush, StringPrototypeCharCodeAt, Uint8Array } =
   primordials;
 
@@ -26,7 +25,7 @@ function confirm(message = "Confirm") {
 
   core.print(`${message} [y/N] `, false);
 
-  const answer = readLineFromStdinSync();
+  const { value: answer } = readLineFromStdinSync();
 
   return answer === "Y" || answer === "y";
 }
@@ -39,16 +38,35 @@ function prompt(message = "Prompt", defaultValue) {
   }
 
   const formattedMessage = message.length === 0 ? "" : `${message} `;
-  return op_read_line_prompt(formattedMessage, `${defaultValue}`);
+  core.print(formattedMessage, false);
+
+  const { value, isEof } = readLineFromStdinSync();
+
+  // If user closed stdin (Ctrl+D), return null.
+  // If user pressed Enter with no input, return the default value.
+  if (isEof) {
+    return null;
+  }
+
+  if (value.length === 0) {
+    return defaultValue.length === 0 ? null : defaultValue;
+  }
+
+  return value;
 }
 
 function readLineFromStdinSync() {
   const c = new Uint8Array(1);
   const buf = [];
+  let isEof = false;
 
   while (true) {
     const n = stdin.readSync(c);
-    if (n === null || n === 0) {
+    if (n === null) {
+      isEof = true;
+      break;
+    }
+    if (n === 0) {
       break;
     }
     if (c[0] === CR) {
@@ -57,7 +75,11 @@ function readLineFromStdinSync() {
         break;
       }
       ArrayPrototypePush(buf, CR);
-      if (n === null || n === 0) {
+      if (n === null) {
+        isEof = true;
+        break;
+      }
+      if (n === 0) {
         break;
       }
     }
@@ -66,7 +88,7 @@ function readLineFromStdinSync() {
     }
     ArrayPrototypePush(buf, c[0]);
   }
-  return core.decode(new Uint8Array(buf));
+  return { value: core.decode(new Uint8Array(buf)), isEof };
 }
 
 export { alert, confirm, prompt };

@@ -1,0 +1,28 @@
+## Summary
+
+This PR fixes two issues related to empty/missing values in Deno's handling:
+
+### 1. Lockfile: Skip empty package names in package.json dependencies
+
+When package.json contains dependencies with empty names (e.g., "": "1.0.0"), the lockfile generation would create invalid entries. This fix skips empty package names to prevent lockfile corruption.
+
+**Files changed:**
+- libs/resolver/lockfile.rs
+
+### 2. Lockfile: Skip empty dependency keys
+
+Similarly, empty dependency keys in package.json could cause issues. This fix ensures empty keys are skipped.
+
+**Files changed:**
+- libs/resolver/lockfile.rs
+
+### 3. Runtime: Remove extra newline when prompt receives EOF
+
+Previously, prompt() used rustyline which would output an extra newline when stdin was closed (Ctrl+D). This makes its behavior inconsistent with confirm(). The fix uses the same approach as confirm() to ensure consistent behavior.
+
+**Related issue:** #22956
+
+## Testing
+
+- [x] Lockfile tests pass
+- [x] Runtime prompt tests pass
