@@ -297,6 +297,10 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
             None
           }
           PackageJsonDepValue::Req(req) => {
+            // Skip empty package names (e.g., "" in package.json)
+            if req.name.is_empty() {
+              return None;
+            }
             Some(JsrDepPackageReq::npm(req.clone()))
           }
           PackageJsonDepValue::Workspace(_) => None,
@@ -395,6 +399,10 @@ impl<TSys: LockfileSys> LockfileLock<TSys> {
                   .filter_map(|(k, v)| PackageJsonDepValue::parse(k, v).ok())
                   .filter_map(|dep| match dep {
                     PackageJsonDepValue::Req(req) => {
+                      // Skip empty package names (e.g., "" in package.json)
+                      if req.name.is_empty() {
+                        return None;
+                      }
                       Some(JsrDepPackageReq::npm(req.clone()))
                     }
                     // not supported
