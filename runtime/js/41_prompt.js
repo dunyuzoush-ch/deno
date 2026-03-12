@@ -1,6 +1,5 @@
 // Copyright 2018-2026 the Deno authors. MIT license.
 import { core, primordials } from "ext:core/mod.js";
-import { op_read_line_prompt } from "ext:core/ops";
 const { ArrayPrototypePush, StringPrototypeCharCodeAt, Uint8Array } =
   primordials;
 
@@ -39,7 +38,13 @@ function prompt(message = "Prompt", defaultValue) {
   }
 
   const formattedMessage = message.length === 0 ? "" : `${message} `;
-  return op_read_line_prompt(formattedMessage, `${defaultValue}`);
+  core.print(formattedMessage, false);
+
+  const answer = readLineFromStdinSync();
+  if (answer.length === 0) {
+    return defaultValue.length === 0 ? null : defaultValue;
+  }
+  return answer;
 }
 
 function readLineFromStdinSync() {
