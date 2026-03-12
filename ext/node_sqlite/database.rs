@@ -1225,6 +1225,39 @@ impl DatabaseSync {
     }
   }
 
+  // Enables or disables the `loadExtension` SQL function and the `loadExtension()` method.
+  //
+  // This is a wrapper around `sqlite3_db_config` with `SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION`.
+  // When `allowExtension` is `false` when constructing, you cannot enable
+  // loading extensions for security reasons.
+  #[fast]
+  #[validate(is_open)]
+  #[undefined]
+  fn enable_load_extension(
+    &self,
+    #[validate(validators::active_bool)] allow: bool,
+  ) -> Result<(), SqliteError> {
+    // Security check: if the database was not opened with allowExtension: true,
+    // we cannot enable extension loading for security reasons.
+    if !self.options.allow_extension && allow {
+      return Err(SqliteError::LoadExensionFailed(
+        "Cannot enable SQLite extensions when allowExtension is not enabled when opening the database"
+          .to_string(),
+      ));
+    }
+
+    let db = self.conn.borrow();
+    let conn = db.as_ref().ok_or(SqliteError::AlreadyClosed)?;
+
+    assert!(set_db_config(
+      conn,
+      SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+      allow
+    ));
+
+    Ok(())
+  }
+
   // Loads a SQLite extension.
   //
   // This is a wrapper around `sqlite3_load_extension`. It requires FFI permission
