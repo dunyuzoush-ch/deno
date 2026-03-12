@@ -348,6 +348,10 @@ fn add_deps_from_package_json(
     deps: &mut Vec<Dep>,
   ) {
     for (k, v) in package_json_deps {
+      // Skip empty dependency keys (e.g., "" in package.json)
+      if k.is_empty() {
+        continue;
+      }
       let v = match v {
         Ok(v) => v,
         Err(e) => {
