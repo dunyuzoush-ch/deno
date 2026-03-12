@@ -699,6 +699,7 @@ impl Workspace {
                   .dependencies
                   .iter()
                   .chain(deps.dev_dependencies.iter())
+                  .filter(|(k, _)| !k.is_empty())
                   .filter_map(|(k, v)| match v.as_ref().ok()? {
                     PackageJsonDepValue::File(path) => {
                       dir_url.join(path).ok().map(Dep::Path)
